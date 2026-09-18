@@ -1,0 +1,15 @@
+{
+  "name": "yelu-tianshi-m0",
+  "version": "0.0.0",
+  "private": true,
+  "description": "夜鹭天屎 M0 核心可交互动画 Demo",
+  "scripts": {
+    "test": "node --test tests/*.test.js",
+    "test:browser": "node tests/browser-smoke.js",
+    "check:syntax": "node --check js/config.js && node --check js/state-machine.js && node --check js/preferences.js && node --check js/audio.js && node --check js/renderers.js && node --check js/app.js && node --check tests/browser-smoke.js",
+    "check": "npm run check:syntax && npm test && npm run test:browser"
+  },
+  "devDependencies": {
+    "playwright": "1.63.0"
+  }
+}
