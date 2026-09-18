@@ -291,25 +291,44 @@
     }
   }
 
+  function createM0CanvasPlaceholderAssetPack(config) {
+    return Object.freeze({
+      id: config.assets.activePack,
+      interfaceVersion: config.assets.interfaceVersion,
+      placeholder: true,
+      background: new BackgroundRenderer(),
+      basket: new BasketRenderer(),
+      fish: new FishRenderer(),
+      effects: new EffectsRenderer(),
+      bird: new BirdRenderer()
+    });
+  }
+
   class SceneRenderer {
-    constructor() {
-      this.background = new BackgroundRenderer();
-      this.basket = new BasketRenderer();
-      this.fish = new FishRenderer();
-      this.effects = new EffectsRenderer();
-      this.bird = new BirdRenderer();
+    constructor(config, assetPack) {
+      this.config = config;
+      this.assets = assetPack;
     }
 
     draw(ctx, model) {
-      this.background.draw(ctx);
-      this.effects.drawSplash(ctx, model);
-      const beakTip = this.bird.draw(ctx, model);
-      this.fish.draw(ctx, model, beakTip);
-      this.effects.drawPoop(ctx, model);
-      this.effects.drawRipple(ctx, model);
-      this.basket.draw(ctx, model);
+      const assets = this.assets;
+      assets.background.draw(ctx, model, this.config);
+      assets.effects.drawSplash(ctx, model, this.config);
+      const beakTip = assets.bird.draw(ctx, model, this.config);
+      assets.fish.draw(ctx, model, beakTip, this.config);
+      assets.effects.drawPoop(ctx, model, this.config);
+      assets.effects.drawRipple(ctx, model, this.config);
+      assets.basket.draw(ctx, model, this.config);
     }
   }
 
-  root.YeluRenderers = { SceneRenderer, BackgroundRenderer, BasketRenderer, FishRenderer, EffectsRenderer, BirdRenderer };
+  root.YeluRenderers = {
+    SceneRenderer,
+    createM0CanvasPlaceholderAssetPack,
+    BackgroundRenderer,
+    BasketRenderer,
+    FishRenderer,
+    EffectsRenderer,
+    BirdRenderer
+  };
 })(typeof globalThis !== "undefined" ? globalThis : window);
