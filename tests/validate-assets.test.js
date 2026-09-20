@@ -8,11 +8,21 @@ const path = require("node:path");
 const test = require("node:test");
 const zlib = require("node:zlib");
 
+function crc32(buffer) {
+  let crc = 0xffffffff;
+  for (const byte of buffer) {
+    crc ^= byte;
+    for (let bit = 0; bit < 8; bit += 1) crc = (crc >>> 1) ^ (crc & 1 ? 0xedb88320 : 0);
+  }
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
 function chunk(type, data) {
   const header = Buffer.alloc(8);
   header.writeUInt32BE(data.length, 0);
   header.write(type, 4, 4, "ascii");
   const crc = Buffer.alloc(4);
+  crc.writeUInt32BE(crc32(Buffer.concat([Buffer.from(type, "ascii"), data])), 0);
   return Buffer.concat([header, data, crc]);
 }
 
@@ -48,7 +58,7 @@ function run(files) {
   return { status: result.status, output: result.stdout };
 }
 
-test("reports a transparent RGBA PNG as accepted", () => {
+test("reports a correct-CRC transparent RGBA PNG as accepted", () => {
   const result = run({
     "heron-idle-000.png": png(2, 1, 6, [1, 2, 3, 0, 4, 5, 6, 255])
   });
@@ -59,6 +69,25 @@ test("reports a transparent RGBA PNG as accepted", () => {
   assert.match(result.output, /transparent_pixels:\n1/);
   assert.match(result.output, /opaque_only:\nfalse/);
   assert.match(result.output, /size:\n2x1/);
+});
+
+test("fails a PNG with an incorrect chunk CRC", () => {
+  const image = Buffer.from(png(1, 1, 6, [1, 2, 3, 0]));
+  image[image.length - 1] ^= 1;
+  const result = run({ "bad-crc.png": image });
+
+  assert.equal(result.status, 1);
+  assert.match(result.output, /reason:\nPNG chunk CRC mismatch/);
+  assert.match(result.output, /result:\nFAIL/);
+});
+
+test("fails a truncated PNG", () => {
+  const image = png(1, 1, 6, [1, 2, 3, 0]).subarray(0, -1);
+  const result = run({ "truncated.png": image });
+
+  assert.equal(result.status, 1);
+  assert.match(result.output, /format:\nINVALID/);
+  assert.match(result.output, /result:\nFAIL/);
 });
 
 test("fails RGB and fully opaque PNG assets", () => {
