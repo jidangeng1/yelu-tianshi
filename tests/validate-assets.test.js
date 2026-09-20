@@ -90,26 +90,49 @@ test("fails a truncated PNG", () => {
   assert.match(result.output, /result:\nFAIL/);
 });
 
-test("fails RGB and fully opaque PNG assets", () => {
+test("fails an RGB PNG asset", () => {
   const result = run({
-    "rgb.png": png(1, 1, 2, [1, 2, 3]),
-    "opaque.png": png(1, 1, 6, [1, 2, 3, 255])
+    "rgb.png": png(1, 1, 2, [1, 2, 3])
   });
 
   assert.equal(result.status, 1);
   assert.match(result.output, /asset:\nrgb\.png[\s\S]*?format:\nRGB[\s\S]*?alpha:\nFAIL/);
-  assert.match(result.output, /asset:\nopaque\.png[\s\S]*?opaque_only:\ntrue[\s\S]*?result:\nFAIL/);
 });
 
-test("fails an opaque gray checkerboard used as fake transparency", () => {
+test("fails a truly opaque RGBA PNG", () => {
   const result = run({
-    "checkerboard.png": png(2, 2, 6, [
-      190, 190, 190, 255, 230, 230, 230, 255,
-      230, 230, 230, 255, 190, 190, 190, 255
-    ])
+    "opaque.png": png(1, 1, 6, [1, 2, 3, 255])
   });
 
   assert.equal(result.status, 1);
-  assert.match(result.output, /checkerboard:\nFAIL/);
+  assert.match(result.output, /asset:\nopaque\.png[\s\S]*?opaque_only:\ntrue/);
   assert.match(result.output, /result:\nFAIL/);
+});
+
+test("reports a checkerboard risk as warning without failing", () => {
+  const pixels = [];
+  for (let y = 0; y < 10; y += 1) for (let x = 0; x < 10; x += 1) {
+    const gray = (x + y) % 2 ? 230 : 190;
+    pixels.push(gray, gray, gray, x === 9 && y === 9 ? 0 : 255);
+  }
+  const result = run({
+    "checkerboard.png": png(10, 10, 6, pixels)
+  });
+
+  assert.equal(result.status, 0);
+  assert.match(result.output, /checkerboard:\nWARNING/);
+  assert.match(result.output, /result:\nWARNING/);
+});
+
+test("does not misclassify a legal grayscale texture as checkerboard", () => {
+  const pixels = [];
+  for (let y = 0; y < 3; y += 1) for (let x = 0; x < 3; x += 1) {
+    const gray = 80 + x * 17 + y * 11;
+    pixels.push(gray, gray, gray, x === 2 && y === 2 ? 0 : 255);
+  }
+  const result = run({ "gray-texture.png": png(3, 3, 6, pixels) });
+
+  assert.equal(result.status, 0);
+  assert.match(result.output, /checkerboard:\nPASS/);
+  assert.match(result.output, /result:\nPASS/);
 });
