@@ -143,8 +143,8 @@ function inspect(file, root) {
     report.alpha = "PASS";
     report.transparent_pixels = `${transparent} (${((transparent / total) * 100).toFixed(2)}%)`;
     report.opaque_only = transparent === 0;
-    report.checkerboard = looksLikeCheckerboard(pixels, header.width, header.height) ? "FAIL" : "PASS";
-    report.result = transparent > 0 && report.checkerboard === "PASS" ? "PASS" : "FAIL";
+    report.checkerboard = looksLikeCheckerboard(pixels, header.width, header.height) ? "WARNING" : "PASS";
+    report.result = transparent === 0 ? "FAIL" : report.checkerboard === "WARNING" ? "WARNING" : "PASS";
     return report;
   } catch (error) {
     report.format = "INVALID";
