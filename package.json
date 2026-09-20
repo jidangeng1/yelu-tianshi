@@ -6,8 +6,9 @@
   "scripts": {
     "test": "node --test tests/*.test.js",
     "test:browser": "node tests/browser-smoke.js",
-    "check:syntax": "node --check js/config.js && node --check js/state-machine.js && node --check js/preferences.js && node --check js/audio.js && node --check js/renderers.js && node --check js/app.js && node --check tests/browser-smoke.js",
-    "check": "npm run check:syntax && npm test && npm run test:browser"
+    "check:syntax": "node --check js/config.js && node --check js/state-machine.js && node --check js/preferences.js && node --check js/audio.js && node --check js/renderers.js && node --check js/app.js && node --check scripts/validate-assets.js && node --check tests/browser-smoke.js",
+    "check": "npm run check:syntax && npm test && npm run test:browser",
+    "validate-assets": "node scripts/validate-assets.js"
   },
   "devDependencies": {
     "playwright": "1.63.0"
