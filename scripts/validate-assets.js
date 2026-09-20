@@ -6,6 +6,15 @@ const zlib = require("node:zlib");
 
 const PNG_SIGNATURE = Buffer.from("89504e470d0a1a0a", "hex");
 
+function crc32(buffer) {
+  let crc = 0xffffffff;
+  for (const byte of buffer) {
+    crc ^= byte;
+    for (let bit = 0; bit < 8; bit += 1) crc = (crc >>> 1) ^ (crc & 1 ? 0xedb88320 : 0);
+  }
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
 function pngFormat(colorType) {
   return ({ 0: "GRAY", 2: "RGB", 3: "INDEXED", 4: "GRAYA", 6: "RGBA" })[colorType] || "UNKNOWN";
 }
@@ -26,6 +35,7 @@ function parsePng(buffer) {
   let offset = 8;
   let header;
   const idat = [];
+  let hasIend = false;
   while (offset + 12 <= buffer.length) {
     const length = buffer.readUInt32BE(offset);
     const type = buffer.toString("ascii", offset + 4, offset + 8);
@@ -33,6 +43,9 @@ function parsePng(buffer) {
     const dataEnd = dataStart + length;
     if (dataEnd + 4 > buffer.length) throw new Error("truncated PNG chunk");
     const data = buffer.subarray(dataStart, dataEnd);
+    const expectedCrc = buffer.readUInt32BE(dataEnd);
+    const actualCrc = crc32(Buffer.concat([Buffer.from(type, "ascii"), data]));
+    if (actualCrc !== expectedCrc) throw new Error("PNG chunk CRC mismatch");
     if (type === "IHDR") {
       if (length !== 13) throw new Error("invalid IHDR chunk");
       header = {
@@ -41,10 +54,13 @@ function parsePng(buffer) {
       };
     }
     if (type === "IDAT") idat.push(data);
-    if (type === "IEND") break;
+    if (type === "IEND") {
+      hasIend = true;
+      break;
+    }
     offset = dataEnd + 4;
   }
-  if (!header || !idat.length) throw new Error("missing PNG image data");
+  if (!header || !idat.length || !hasIend) throw new Error("missing PNG image data");
   return { header, compressed: Buffer.concat(idat) };
 }
 
