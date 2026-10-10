@@ -291,9 +291,102 @@
     }
   }
 
+  class HeronEatSequenceRenderer {
+    constructor(config, fallback, options) {
+      this.config = config;
+      this.fallback = fallback;
+      this.sequence = config.assets.heronEat;
+      this.frames = [];
+      this.status = "loading";
+      this.playOfficialThisCycle = null;
+      this.lastState = null;
+      const factory = options && options.imageFactory
+        ? options.imageFactory
+        : () => typeof Image === "undefined" ? null : new Image();
+
+      let loaded = 0;
+      const fail = () => { this.status = "failed"; };
+      for (const source of this.sequence.frames) {
+        const image = factory();
+        if (!image) {
+          fail();
+          break;
+        }
+        image.onload = () => {
+          loaded += 1;
+          if (loaded === this.sequence.frames.length && this.status !== "failed") this.status = "ready";
+        };
+        image.onerror = fail;
+        image.src = source;
+        this.frames.push(image);
+      }
+    }
+
+    isReady() {
+      return this.status === "ready" && this.frames.length === this.sequence.frames.length;
+    }
+
+    elapsed(model) {
+      const durations = this.config.durations;
+      const preSwallow = model.swallowVariant === "flutter"
+        ? durations.PRE_SWALLOW_FLUTTER
+        : durations.PRE_SWALLOW_DIRECT;
+      if (model.state === STATES.STRIKE) return model.progress * durations.STRIKE;
+      if (model.state === STATES.PRE_SWALLOW) return durations.STRIKE + model.progress * preSwallow;
+      if (model.state === STATES.SWALLOW) return durations.STRIKE + preSwallow + model.progress * durations.SWALLOW;
+      if (model.state === STATES.ROUNDNESS) {
+        return durations.STRIKE + preSwallow + durations.SWALLOW + model.progress * durations.ROUNDNESS;
+      }
+      return null;
+    }
+
+    frameIndex(model) {
+      if ([STATES.IDLE, STATES.THROW, STATES.FISH_SWIM, STATES.TRACK].includes(model.state)) return 0;
+      const elapsed = this.elapsed(model);
+      if (elapsed == null) return null;
+      const frameDuration = 1000 / this.sequence.fps;
+      return Math.min(this.sequence.frames.length - 1, Math.floor(elapsed / frameDuration));
+    }
+
+    draw(ctx, model) {
+      const index = this.frameIndex(model);
+      const eating = [STATES.STRIKE, STATES.PRE_SWALLOW, STATES.SWALLOW, STATES.ROUNDNESS].includes(model.state);
+      const wasEating = [STATES.STRIKE, STATES.PRE_SWALLOW, STATES.SWALLOW, STATES.ROUNDNESS].includes(this.lastState);
+      if (eating && !wasEating) {
+        this.playOfficialThisCycle = this.isReady();
+      } else if (!eating) {
+        this.playOfficialThisCycle = null;
+      }
+      this.lastState = model.state;
+      if (!this.isReady() || index == null || (eating && this.playOfficialThisCycle === false)) {
+        return this.fallback.draw(ctx, model);
+      }
+
+      const scale = this.sequence.displaySize / this.sequence.frameHeight;
+      const y = this.sequence.footBaselineY - this.sequence.sourceFootBaseline * scale;
+      ctx.drawImage(
+        this.frames[index],
+        this.sequence.x,
+        y,
+        this.sequence.displaySize,
+        this.sequence.displaySize
+      );
+
+      // Source frames share a 512px canvas and a y=480 foot baseline. Keeping one
+      // destination rectangle preserves that authored alignment across all poses.
+      const beaks = [[70, 194], [68, 383], [48, 420], [90, 181], [105, 82], [65, 193]];
+      const beak = beaks[index];
+      return {
+        x: this.sequence.x + beak[0] * scale,
+        y: y + beak[1] * scale,
+        suppressFish: index >= 2
+      };
+    }
+  }
+
   function createM0CanvasPlaceholderAssetPack(config) {
     return Object.freeze({
-      id: config.assets.activePack,
+      id: "m0-canvas-placeholder",
       interfaceVersion: config.assets.interfaceVersion,
       placeholder: true,
       background: new BackgroundRenderer(),
@@ -301,6 +394,21 @@
       fish: new FishRenderer(),
       effects: new EffectsRenderer(),
       bird: new BirdRenderer()
+    });
+  }
+
+  function createOfficialV1AssetPack(config, options) {
+    const fallback = createM0CanvasPlaceholderAssetPack(config);
+    return Object.freeze({
+      id: config.assets.activePack,
+      interfaceVersion: config.assets.interfaceVersion,
+      placeholder: false,
+      fallback,
+      background: fallback.background,
+      basket: fallback.basket,
+      fish: fallback.fish,
+      effects: fallback.effects,
+      bird: new HeronEatSequenceRenderer(config, fallback.bird, options)
     });
   }
 
@@ -315,7 +423,7 @@
       assets.background.draw(ctx, model, this.config);
       assets.effects.drawSplash(ctx, model, this.config);
       const beakTip = assets.bird.draw(ctx, model, this.config);
-      assets.fish.draw(ctx, model, beakTip, this.config);
+      if (!beakTip || !beakTip.suppressFish) assets.fish.draw(ctx, model, beakTip, this.config);
       assets.effects.drawPoop(ctx, model, this.config);
       assets.effects.drawRipple(ctx, model, this.config);
       assets.basket.draw(ctx, model, this.config);
@@ -325,10 +433,12 @@
   root.YeluRenderers = {
     SceneRenderer,
     createM0CanvasPlaceholderAssetPack,
+    createOfficialV1AssetPack,
     BackgroundRenderer,
     BasketRenderer,
     FishRenderer,
     EffectsRenderer,
-    BirdRenderer
+    BirdRenderer,
+    HeronEatSequenceRenderer
   };
 })(typeof globalThis !== "undefined" ? globalThis : window);

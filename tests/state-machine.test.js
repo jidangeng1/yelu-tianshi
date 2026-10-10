@@ -103,3 +103,23 @@ test("reports exact progress at deterministic timestamps", () => {
   assert.equal(machine.progress(1000 + config.durations.THROW / 2), 0.5);
   assert.equal(machine.progress(1000 + config.durations.THROW), 1);
 });
+
+test("eight consecutive feeds each preserve exactly one poop settlement", () => {
+  const machine = new YeluStateMachine(config, () => 0.1);
+  let now = 0;
+  let poopEntries = 0;
+  machine.onStateChange((state) => { if (state === STATES.POOP) poopEntries += 1; });
+
+  for (let feed = 1; feed <= 8; feed += 1) {
+    assert.equal(machine.feed(now), true, `feed ${feed} should start`);
+    assert.equal(machine.feed(now + 1), false, `feed ${feed} should stay input-locked`);
+    while (machine.state !== STATES.IDLE || machine.locked) {
+      now += 25;
+      machine.update(now);
+    }
+    assert.equal(poopEntries, feed, `feed ${feed} should settle poop exactly once`);
+  }
+
+  assert.equal(machine.cycle, 8);
+  assert.equal(poopEntries, 8);
+});

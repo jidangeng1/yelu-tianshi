@@ -36,3 +36,90 @@ test("accepts a replacement asset pack without state-machine changes", () => {
   scene.draw({}, { state: "IDLE" });
   assert.deepEqual(calls, ["background", "splash", "bird", "fish", "poop", "ripple", "basket"]);
 });
+
+function loadedImageFactory(created) {
+  return () => {
+    const image = {
+      set src(value) {
+        this.source = value;
+        this.onload();
+      }
+    };
+    created.push(image);
+    return image;
+  };
+}
+
+test("loads and plays the six official eat frames once at 8 FPS", () => {
+  const created = [];
+  const fallback = { draw: () => ({ x: 0, y: 0 }) };
+  const renderer = new global.YeluRenderers.HeronEatSequenceRenderer(
+    global.YeluConfig,
+    fallback,
+    { imageFactory: loadedImageFactory(created) }
+  );
+  const flutter = "flutter";
+  const cases = [
+    [{ state: "IDLE", progress: 0, swallowVariant: flutter }, 0],
+    [{ state: "THROW", progress: 0.5, swallowVariant: flutter }, 0],
+    [{ state: "FISH_SWIM", progress: 0.5, swallowVariant: flutter }, 0],
+    [{ state: "TRACK", progress: 0.5, swallowVariant: flutter }, 0],
+    [{ state: "STRIKE", progress: 0, swallowVariant: flutter }, 0],
+    [{ state: "STRIKE", progress: 125 / 180, swallowVariant: flutter }, 1],
+    [{ state: "PRE_SWALLOW", progress: 70 / 280, swallowVariant: flutter }, 2],
+    [{ state: "PRE_SWALLOW", progress: 195 / 280, swallowVariant: flutter }, 3],
+    [{ state: "SWALLOW", progress: 40 / 380, swallowVariant: flutter }, 4],
+    [{ state: "SWALLOW", progress: 165 / 380, swallowVariant: flutter }, 5],
+    [{ state: "ROUNDNESS", progress: 1, swallowVariant: flutter }, 5]
+  ];
+
+  assert.equal(renderer.isReady(), true);
+  assert.deepEqual(created.map((image) => image.source), global.YeluConfig.assets.heronEat.frames);
+  for (const [model, expected] of cases) assert.equal(renderer.frameIndex(model), expected);
+});
+
+test("draws every official frame into one foot-anchored destination rectangle", () => {
+  const created = [];
+  const renderer = new global.YeluRenderers.HeronEatSequenceRenderer(
+    global.YeluConfig,
+    { draw: () => ({ x: 0, y: 0 }) },
+    { imageFactory: loadedImageFactory(created) }
+  );
+  const calls = [];
+  const ctx = { drawImage: (...args) => calls.push(args) };
+  const models = [0, 1, 2, 3, 4, 5].map((index) => ({
+    state: "STRIKE",
+    progress: Math.min(index * 125 / global.YeluConfig.durations.STRIKE, 1),
+    swallowVariant: "flutter"
+  }));
+  models[2] = { state: "PRE_SWALLOW", progress: 70 / 280, swallowVariant: "flutter" };
+  models[3] = { state: "PRE_SWALLOW", progress: 195 / 280, swallowVariant: "flutter" };
+  models[4] = { state: "SWALLOW", progress: 40 / 380, swallowVariant: "flutter" };
+  models[5] = { state: "SWALLOW", progress: 165 / 380, swallowVariant: "flutter" };
+  models.forEach((model) => renderer.draw(ctx, model));
+
+  assert.deepEqual(calls.map((args) => args.slice(1)), Array(6).fill(calls[0].slice(1)));
+  assert.deepEqual(calls.map((args) => args[0]), created);
+});
+
+test("falls back to the Canvas bird when any official frame fails", () => {
+  let fallbackCalls = 0;
+  let count = 0;
+  const renderer = new global.YeluRenderers.HeronEatSequenceRenderer(
+    global.YeluConfig,
+    { draw: () => { fallbackCalls += 1; return { x: 12, y: 34 }; } },
+    {
+      imageFactory: () => ({
+        set src(_value) {
+          count += 1;
+          if (count === 3) this.onerror();
+          else this.onload();
+        }
+      })
+    }
+  );
+  const result = renderer.draw({}, { state: "STRIKE", progress: 0, swallowVariant: "direct" });
+  assert.equal(renderer.status, "failed");
+  assert.equal(fallbackCalls, 1);
+  assert.deepEqual(result, { x: 12, y: 34 });
+});

@@ -57,18 +57,21 @@ let browser;
   await page.goto(baseUrl, { waitUntil: "networkidle" });
   await page.evaluate(() => localStorage.clear());
   await page.reload({ waitUntil: "networkidle" });
+  await page.waitForFunction(() => window.__YELU_M0__.assetPack.bird.status === "ready");
   const initial = await page.evaluate(() => ({
     state: window.__YELU_M0__.machine.state,
     hintVisible: !document.getElementById("feed-hint").classList.contains("hidden"),
     canvas: [document.getElementById("scene").width, document.getElementById("scene").height],
     assetPack: window.__YELU_M0__.assetPack.id,
-    placeholder: window.__YELU_M0__.assetPack.placeholder
+    placeholder: window.__YELU_M0__.assetPack.placeholder,
+    eatFrames: window.__YELU_M0__.assetPack.bird.frames.map((image) => [image.complete, image.naturalWidth])
   }));
   assert.deepEqual(initial.canvas, [390, 844]);
   assert.equal(initial.state, "IDLE");
   assert.equal(initial.hintVisible, true);
-  assert.equal(initial.assetPack, "m0-canvas-placeholder");
-  assert.equal(initial.placeholder, true);
+  assert.equal(initial.assetPack, "official-v1-heron-eat");
+  assert.equal(initial.placeholder, false);
+  assert.deepEqual(initial.eatFrames, Array(6).fill([true, 512]));
   await page.screenshot({ path: path.join(artifacts, "idle.png") });
 
   await page.click("#feed-button");
@@ -84,6 +87,20 @@ let browser;
     return window.__YELU_M0__.machine.cycle;
   });
   assert.equal(repeated, 1);
+
+  await page.waitForFunction(() => {
+    const app = window.__YELU_M0__;
+    const model = app.machine.snapshot(performance.now());
+    const index = app.assetPack.bird.frameIndex(model);
+    return index != null && index >= 3;
+  });
+  const eating = await page.evaluate(() => {
+    const app = window.__YELU_M0__;
+    const model = app.machine.snapshot(performance.now());
+    return { state: model.state, frame: app.assetPack.bird.frameIndex(model) };
+  });
+  assert.ok(eating.frame >= 3 && eating.frame <= 5);
+  await page.screenshot({ path: path.join(artifacts, "eat-sequence.png") });
 
   await page.waitForFunction(() => window.__YELU_M0__.machine.state === "POOP");
   await page.screenshot({ path: path.join(artifacts, "poop.png") });
@@ -132,7 +149,19 @@ let browser;
   assert.deepEqual(fileErrors, []);
   assert.deepEqual(errors, []);
 
-  const result = { initial, afterClick, repeated, completed, persisted, branchChecks, errors, fileErrors };
+  const fallbackContext = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  await fallbackContext.route("**/heron-eat-002.png", (route) => route.abort());
+  const fallbackPage = await fallbackContext.newPage();
+  const fallbackErrors = collectErrors(fallbackPage);
+  await fallbackPage.goto(baseUrl, { waitUntil: "networkidle" });
+  await fallbackPage.waitForFunction(() => window.__YELU_M0__.assetPack.bird.status === "failed");
+  await fallbackPage.click("#feed-button");
+  await fallbackPage.waitForFunction(() => window.__YELU_M0__.machine.state === "STRIKE");
+  assert.equal(await fallbackPage.evaluate(() => window.__YELU_M0__.machine.locked), true);
+  assert.deepEqual(fallbackErrors, []);
+  await fallbackContext.close();
+
+  const result = { initial, afterClick, repeated, eating, completed, persisted, branchChecks, errors, fileErrors, fallbackErrors };
   fs.writeFileSync(path.join(artifacts, "browser-result.json"), JSON.stringify(result, null, 2));
   console.log(JSON.stringify(result, null, 2));
 })().catch((error) => {
