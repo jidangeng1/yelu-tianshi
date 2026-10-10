@@ -9,8 +9,25 @@
       feedHintDismissedKey: "yelu:m0:feed-hint-dismissed:v1"
     },
     assets: {
-      activePack: "m0-canvas-placeholder",
-      interfaceVersion: 1
+      activePack: "official-v1-heron-eat",
+      interfaceVersion: 1,
+      heronEat: {
+        fps: 8,
+        frameWidth: 512,
+        frameHeight: 512,
+        displaySize: 280,
+        x: 72,
+        footBaselineY: 430,
+        sourceFootBaseline: 480,
+        frames: [
+          "assets/official-v1/heron/eat/heron-eat-000.png",
+          "assets/official-v1/heron/eat/heron-eat-001.png",
+          "assets/official-v1/heron/eat/heron-eat-002.png",
+          "assets/official-v1/heron/eat/heron-eat-003.png",
+          "assets/official-v1/heron/eat/heron-eat-004.png",
+          "assets/official-v1/heron/eat/heron-eat-005.png"
+        ]
+      }
     },
     basket: { x: 195, y: 778, width: 144, height: 94 },
     bird: { x: 246, y: 402 },

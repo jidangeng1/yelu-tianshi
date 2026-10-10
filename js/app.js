@@ -8,7 +8,7 @@
   const config = window.YeluConfig;
   const random = typeof window.__YELU_RANDOM__ === "function" ? window.__YELU_RANDOM__ : Math.random;
   const machine = new window.YeluState.YeluStateMachine(config, random);
-  const assetPack = window.YeluRenderers.createM0CanvasPlaceholderAssetPack(config);
+  const assetPack = window.YeluRenderers.createOfficialV1AssetPack(config);
   const renderer = new window.YeluRenderers.SceneRenderer(config, assetPack);
   const sound = new window.YeluAudio.SoundFeedback();
   let storage = null;
