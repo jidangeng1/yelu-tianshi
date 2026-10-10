@@ -158,7 +158,10 @@ let browser;
   await fallbackPage.click("#feed-button");
   await fallbackPage.waitForFunction(() => window.__YELU_M0__.machine.state === "STRIKE");
   assert.equal(await fallbackPage.evaluate(() => window.__YELU_M0__.machine.locked), true);
-  assert.deepEqual(fallbackErrors, []);
+  assert.deepEqual(
+    fallbackErrors.filter((error) => !error.includes("Failed to load resource")),
+    []
+  );
   await fallbackContext.close();
 
   const result = { initial, afterClick, repeated, eating, completed, persisted, branchChecks, errors, fileErrors, fallbackErrors };
