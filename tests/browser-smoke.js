@@ -14,6 +14,7 @@ const contentTypes = { ".html": "text/html", ".css": "text/css", ".js": "text/ja
 function startServer() {
   const server = http.createServer((request, response) => {
     const pathname = new URL(request.url, "http://127.0.0.1").pathname;
+    if (pathname === "/favicon.ico") { response.writeHead(204).end(); return; }
     const relative = pathname === "/" ? "index.html" : pathname.slice(1);
     const file = path.resolve(root, relative);
     if (!file.startsWith(root + path.sep)) { response.writeHead(403).end(); return; }
@@ -48,7 +49,10 @@ let browser;
   server = await startServer();
   const address = server.address();
   const baseUrl = `http://127.0.0.1:${address.port}`;
-  browser = await chromium.launch({ headless: true });
+  browser = await chromium.launch({
+    headless: true,
+    executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || undefined
+  });
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1 });
   const page = await context.newPage();
   const errors = collectErrors(page);
@@ -71,7 +75,7 @@ let browser;
   assert.equal(initial.hintVisible, true);
   assert.equal(initial.assetPack, "official-v1-heron-eat");
   assert.equal(initial.placeholder, false);
-  assert.deepEqual(initial.eatFrames, Array(6).fill([true, 512]));
+  assert.deepEqual(initial.eatFrames, Array(9).fill([true, 512]));
   await page.screenshot({ path: path.join(artifacts, "idle.png") });
 
   await page.click("#feed-button");
@@ -99,7 +103,7 @@ let browser;
     const model = app.machine.snapshot(performance.now());
     return { state: model.state, frame: app.assetPack.bird.frameIndex(model) };
   });
-  assert.ok(eating.frame >= 3 && eating.frame <= 5);
+  assert.ok(eating.frame >= 3 && eating.frame <= 8);
   await page.screenshot({ path: path.join(artifacts, "eat-sequence.png") });
 
   await page.waitForFunction(() => window.__YELU_M0__.machine.state === "POOP");
@@ -174,3 +178,4 @@ let browser;
   if (browser) await browser.close().catch(() => {});
   if (server) await new Promise((resolve) => server.close(resolve));
 });
+

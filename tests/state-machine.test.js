@@ -32,7 +32,7 @@ test("runs the complete M0 sequence and unlocks afterwards", () => {
   const { machine, seen, now } = runCycle([0.45, 0.2]);
   assert.deepEqual(seen, ORDER);
   assert.equal(machine.locked, false);
-  assert.ok(now >= 3000 && now <= 5000);
+  assert.ok(now >= 5000 && now <= 5500);
   assert.equal(machine.feed(now), true);
 });
 
@@ -64,7 +64,16 @@ test("supports direct and flutter swallow variants", () => {
   direct.feed(0); flutter.feed(0);
   assert.equal(direct.swallowVariant, "direct");
   assert.equal(flutter.swallowVariant, "flutter");
-  assert.ok(direct.durationFor(STATES.PRE_SWALLOW) < flutter.durationFor(STATES.PRE_SWALLOW));
+  assert.equal(direct.durationFor(STATES.PRE_SWALLOW), 300);
+  assert.equal(flutter.durationFor(STATES.PRE_SWALLOW), 300);
+});
+
+test("reserves exactly the independent frame timeline before poop preparation", () => {
+  const machine = new YeluStateMachine(config, () => 0.2);
+  machine.feed(0);
+  const eatingDuration = [STATES.STRIKE, STATES.PRE_SWALLOW, STATES.SWALLOW, STATES.ROUNDNESS]
+    .reduce((total, state) => total + machine.durationFor(state), 0);
+  assert.equal(eatingDuration, 1950);
 });
 
 test("uses deterministic boundary values for targets and variants", () => {
@@ -123,3 +132,4 @@ test("eight consecutive feeds each preserve exactly one poop settlement", () => 
   assert.equal(machine.cycle, 8);
   assert.equal(poopEntries, 8);
 });
+
