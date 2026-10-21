@@ -344,8 +344,12 @@
       if ([STATES.IDLE, STATES.THROW, STATES.FISH_SWIM, STATES.TRACK].includes(model.state)) return 0;
       const elapsed = this.elapsed(model);
       if (elapsed == null) return null;
-      const frameDuration = 1000 / this.sequence.fps;
-      return Math.min(this.sequence.frames.length - 1, Math.floor(elapsed / frameDuration));
+      let boundary = 0;
+      for (let index = 0; index < this.sequence.frameDurations.length; index += 1) {
+        boundary += this.sequence.frameDurations[index];
+        if (elapsed < boundary) return index;
+      }
+      return this.sequence.frames.length - 1;
     }
 
     draw(ctx, model) {
@@ -374,12 +378,15 @@
 
       // Source frames share a 512px canvas and a y=480 foot baseline. Keeping one
       // destination rectangle preserves that authored alignment across all poses.
-      const beaks = [[70, 194], [68, 383], [48, 420], [90, 181], [105, 82], [65, 193]];
+      const beaks = [
+        [70, 194], [68, 383], [36, 354], [48, 420], [72, 400],
+        [90, 181], [105, 82], [102, 32], [65, 193]
+      ];
       const beak = beaks[index];
       return {
         x: this.sequence.x + beak[0] * scale,
         y: y + beak[1] * scale,
-        suppressFish: index >= 2
+        suppressFish: index >= 3
       };
     }
   }
@@ -442,3 +449,4 @@
     HeronEatSequenceRenderer
   };
 })(typeof globalThis !== "undefined" ? globalThis : window);
+

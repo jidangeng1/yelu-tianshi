@@ -50,5 +50,6 @@ Issue #1 的 M0 核心动画 Demo 已实现。动画由 `requestAnimationFrame` 
 
 ## 已知限制
 
-- 当前仅接入夜师傅六帧正式吃鱼 PNG；背景、鱼篓、天屎和环境特效仍使用 `m0-canvas-placeholder` Canvas 水彩占位实现。PNG 加载失败时夜师傅也会自动降级为 Canvas 绘制，不影响投喂与天屎状态机。`SceneRenderer` 继续通过 asset pack 接口消费各层，无需把素材逻辑写入状态机。
+- 当前仅接入夜师傅九帧正式吃鱼 PNG，并按 `200/250/150/80/120/300/250/350/250ms` 逐帧单次播放；背景、鱼篓、天屎和环境特效仍使用 `m0-canvas-placeholder` Canvas 水彩占位实现。PNG 加载失败时夜师傅也会自动降级为 Canvas 绘制，不影响投喂与天屎状态机。`SceneRenderer` 继续通过 asset pack 接口消费各层，无需把素材逻辑写入状态机。
 - M0 以现代 Chrome/Edge 和约 `390 × 844` 竖屏为主要目标，未针对旧版浏览器做兼容处理。
+

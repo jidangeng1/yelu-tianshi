@@ -6,4 +6,5 @@
 
 提交素材前，请确认 PNG 透明、目录、帧号、锚点和状态映射均符合该规范。
 
-当前已接入 `heron/eat/heron-eat-000.png` 至 `heron-eat-005.png` 六帧吃鱼序列。渲染层以 8 FPS 单次播放，并以源图统一的 `y=480` 脚部基线定位；素材尚未全部加载或任一帧加载失败时，自动退回 `m0-canvas-placeholder` Canvas 夜师傅，不中断游戏状态机。
+当前已接入 `heron/eat/heron-eat-000.png` 至 `heron-eat-008.png` 九帧吃鱼序列。渲染层按配置的逐帧时长单次播放，并以源图统一的 `y=480` 脚部基线定位；素材尚未全部加载或任一帧加载失败时，自动退回 `m0-canvas-placeholder` Canvas 夜师傅，不中断游戏状态机。
+
